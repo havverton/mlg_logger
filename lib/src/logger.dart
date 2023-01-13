@@ -1,3 +1,4 @@
+import 'package:mlg_logger/src/log_sources.dart';
 import 'package:mlg_logger/src/printers/simple_printer.dart';
 
 import 'filters/debug_filter.dart';
@@ -54,59 +55,61 @@ class Logger {
   Logger({
     LogFilter? filter,
     LogPrinter? printer,
+    List<LogSource>? sources,
     Level? level,
   })  : _filter = filter ?? DevelopmentFilter(),
         _printer = printer ?? SimplePrinter()
   {
     _filter.init();
     _filter.level = level ?? Logger.level;
-   // _printer.init();
-    //_output.init();
+    _printer.init();
   }
 
   /// Log a message at level [Level.verbose].
-  void v(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  void v(dynamic message, [dynamic error, StackTrace? stackTrace,List<LogSource>? logSources]) {
     log(Level.verbose, message, error, stackTrace);
   }
   /// Log a message at level [Level.debug].
-  void d(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  void d(dynamic message, [dynamic error, StackTrace? stackTrace,List<LogSource>? logSources]) {
     log(Level.debug, message, error, stackTrace);
   }
 
   /// Log a message at level [Level.info].
-  void i(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  void i(dynamic message, [dynamic error, StackTrace? stackTrace,List<LogSource>? logSources]) {
     log(Level.info, message, error, stackTrace);
   }
 
   /// Log a message at level [Level.warning].
-  void w(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  void w(dynamic message, [dynamic error, StackTrace? stackTrace,List<LogSource>? logSources]) {
     log(Level.warning, message, error, stackTrace);
   }
 
   /// Log a message at level [Level.error].
-  void e(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  void e(dynamic message, [dynamic error, StackTrace? stackTrace,List<LogSource>? logSources]) {
     log(Level.error, message, error, stackTrace);
   }
 
 
   /// Log a message with [level].
   void log(Level level, dynamic message,
-      [dynamic error, StackTrace? stackTrace]) {
+      [dynamic error, StackTrace? stackTrace,List<LogSource>? logSources]) {
   if (error != null && error is StackTrace) {
       throw ArgumentError('Error parameter cannot take a StackTrace!');
     } else if (level == Level.nothing) {
       throw ArgumentError('Log events cannot have Level.nothing');
     }
+    //TODO пополнить список всеми сурсами
+    var sources = logSources ?? [ConsoleLogSource()];
     var logEvent = LogEvent(level, message, error, stackTrace);
+
     if (_filter.shouldLog(logEvent)) {
       var output = _printer.log(logEvent);
-
       if (output.isNotEmpty) {
         var outputEvent = OutputEvent(level, output);
-        // Issues with log output should NOT influence
-        // the main software behavior.
         try {
-          outputEvent.lines.forEach((e) {print(e); });
+          for (var source in sources) {
+            source.handleLog(outputEvent.lines);
+          }
         } catch (e, s) {
           print(e);
           print(s);
